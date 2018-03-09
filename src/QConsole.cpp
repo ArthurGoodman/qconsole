@@ -44,7 +44,6 @@ void QConsole::unlock()
 
 void QConsole::write(const std::string &str)
 {
-    textCursor().insertBlock();
     insertPlainText(str.c_str());
     scrollDown();
 }
