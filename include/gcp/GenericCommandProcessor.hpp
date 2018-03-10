@@ -14,13 +14,10 @@ namespace gcp {
 class GenericCommandProcessor final
 {
 public: // methods
-    template <class... Args>
-    void registerCommand(
-        const std::string &name,
-        const std::function<void(Args...)> &handler)
-    { ///@todo Implement other template specializations
-        using IndexSequence = make_index_sequence<sizeof...(Args)>;
-        registerCommandHelper(name, handler, IndexSequence{});
+    template <class F>
+    void registerCommand(const std::string &name, F &&f)
+    {
+        RegisterCommandHelper<F>{}(*this, name, std::forward<F>(f));
     }
 
     void process(const std::string &command)
@@ -58,9 +55,31 @@ public: // methods
         m_error_callback = callback;
     }
 
+private: // types
+    using HandlerType = std::function<void(const std::vector<std::string> &)>;
+
+    template <class T>
+    struct RegisterCommandHelper
+        : public RegisterCommandHelper<decltype(&T::operator())>
+    {
+    };
+
+    template <class C, class R, class... Args>
+    struct RegisterCommandHelper<R (C::*)(Args...) const>
+    {
+        void operator()(
+            GenericCommandProcessor &processor,
+            const std::string &name,
+            const std::function<void(Args...)> &handler) const
+        {
+            using IndexSequence = make_index_sequence<sizeof...(Args)>;
+            processor.registerCommandImpl(name, handler, IndexSequence{});
+        }
+    };
+
 private: // methods
     template <class... Args, std::size_t... Indices>
-    void registerCommandHelper(
+    void registerCommandImpl(
         const std::string &name,
         const std::function<void(Args...)> &handler,
         index_sequence<Indices...>)
@@ -75,7 +94,17 @@ private: // methods
                 return;
             }
 
-            handler(convert<Args>(args[Indices])...);
+            try
+            {
+                handler(convert<Args>(args[Indices])...);
+            }
+            catch (const std::exception &e)
+            {
+                if (m_error_callback)
+                {
+                    m_error_callback(e.what());
+                }
+            }
         };
     }
 
@@ -83,8 +112,7 @@ private: // methods
     T convert(const std::string &str);
 
 private: // fields
-    std::map<std::string, std::function<void(const std::vector<std::string> &)>>
-        m_handlers;
+    std::map<std::string, HandlerType> m_handlers;
     std::function<void(const std::string &)> m_error_callback;
 };
 
@@ -141,6 +169,19 @@ template <>
 inline std::string GenericCommandProcessor::convert(const std::string &str)
 {
     return str;
+}
+
+template <>
+inline const std::string &GenericCommandProcessor::convert(
+    const std::string &str)
+{
+    return str;
+}
+
+template <>
+inline char GenericCommandProcessor::convert(const std::string &str)
+{
+    return str[0];
 }
 
 } // namespace gcp
