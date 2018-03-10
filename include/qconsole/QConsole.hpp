@@ -15,7 +15,8 @@ class QConsole : public QPlainTextEdit
 public: // methods
     QConsole(QWidget *parent = nullptr);
 
-    void setProcesor(const std::function<void(const std::string &)> &processor);
+    void setProcessor(
+        const std::function<void(const std::string &)> &processor);
 
     void setPrompt(const std::string &prompt);
 

@@ -20,7 +20,7 @@ QConsole::QConsole(QWidget *parent)
     setCursorWidth(2);
 }
 
-void QConsole::setProcesor(
+void QConsole::setProcessor(
     const std::function<void(const std::string &)> &processor)
 {
     m_processor = processor;
@@ -82,7 +82,7 @@ void QConsole::setTextColor(const QColor &c)
 
 void QConsole::keyPressEvent(QKeyEvent *e)
 {
-    ///@todo add selections
+    ///@todo Add selections
 
     if (m_locked)
     {
@@ -94,7 +94,7 @@ void QConsole::keyPressEvent(QKeyEvent *e)
         QPlainTextEdit::keyPressEvent(e);
     }
     else if (
-        e->key() >= Qt::Key_Space && e->key() <= Qt::Key_BraceRight &&
+        e->key() >= Qt::Key_Space && e->key() <= Qt::Key_AsciiTilde &&
         e->key() != Qt::Key_QuoteLeft)
     {
         if (e->modifiers() == Qt::NoModifier ||
@@ -225,12 +225,13 @@ void QConsole::onReturn()
         cursor.block().text().mid(m_prompt.size()).toStdString();
     historyAdd(command);
 
+    insertBlock();
+
     if (m_processor)
     {
         m_processor(command);
     }
 
-    insertBlock();
     insertPrompt();
 }
 
