@@ -11,7 +11,7 @@
 
 namespace gcp {
 
-class GeneralCommandProcessor final
+class GenericCommandProcessor final
 {
 public: // methods
     template <class... Args>
@@ -89,56 +89,56 @@ private: // fields
 };
 
 template <>
-inline int GeneralCommandProcessor::convert(const std::string &str)
+inline int GenericCommandProcessor::convert(const std::string &str)
 {
     return std::stoi(str);
 }
 
 template <>
-inline long GeneralCommandProcessor::convert(const std::string &str)
+inline long GenericCommandProcessor::convert(const std::string &str)
 {
     return std::stol(str);
 }
 
 template <>
-inline long long GeneralCommandProcessor::convert(const std::string &str)
+inline long long GenericCommandProcessor::convert(const std::string &str)
 {
     return std::stoll(str);
 }
 
 template <>
-inline unsigned long GeneralCommandProcessor::convert(const std::string &str)
+inline unsigned long GenericCommandProcessor::convert(const std::string &str)
 {
     return std::stoul(str);
 }
 
 template <>
-inline unsigned long long GeneralCommandProcessor::convert(
+inline unsigned long long GenericCommandProcessor::convert(
     const std::string &str)
 {
     return std::stoull(str);
 }
 
 template <>
-inline float GeneralCommandProcessor::convert(const std::string &str)
+inline float GenericCommandProcessor::convert(const std::string &str)
 {
     return std::stof(str);
 }
 
 template <>
-inline double GeneralCommandProcessor::convert(const std::string &str)
+inline double GenericCommandProcessor::convert(const std::string &str)
 {
     return std::stod(str);
 }
 
 template <>
-inline long double GeneralCommandProcessor::convert(const std::string &str)
+inline long double GenericCommandProcessor::convert(const std::string &str)
 {
     return std::stold(str);
 }
 
 template <>
-inline std::string GeneralCommandProcessor::convert(const std::string &str)
+inline std::string GenericCommandProcessor::convert(const std::string &str)
 {
     return str;
 }
