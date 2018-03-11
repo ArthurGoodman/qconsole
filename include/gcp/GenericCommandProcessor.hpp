@@ -58,14 +58,26 @@ public: // methods
 private: // types
     using HandlerType = std::function<void(const std::vector<std::string> &)>;
 
-    template <class T>
+    template <class F>
     struct RegisterCommandHelper
-        : public RegisterCommandHelper<decltype(&T::operator())>
+        : public RegisterCommandHelper<decltype(&F::operator())>
+    {
+    };
+
+    template <class R, class... Args>
+    struct RegisterCommandHelper<R (*)(Args...)>
+        : public RegisterCommandHelper<R(Args...)>
     {
     };
 
     template <class C, class R, class... Args>
     struct RegisterCommandHelper<R (C::*)(Args...) const>
+        : public RegisterCommandHelper<R(Args...)>
+    {
+    };
+
+    template <class R, class... Args>
+    struct RegisterCommandHelper<R(Args...)>
     {
         void operator()(
             GenericCommandProcessor &processor,
@@ -89,14 +101,18 @@ private: // methods
             {
                 if (m_error_callback)
                 {
-                    m_error_callback("invalid number of arguments");
+                    m_error_callback(
+                        "invalid number of arguments (" +
+                        std::to_string(args.size()) + "/" +
+                        std::to_string(sizeof...(Args)) + ")");
                 }
                 return;
             }
 
             try
             {
-                handler(convert<Args>(args[Indices])...);
+                handler(
+                    convert<typename std::decay<Args>::type>(args[Indices])...);
             }
             catch (const std::exception &e)
             {
@@ -167,13 +183,6 @@ inline long double GenericCommandProcessor::convert(const std::string &str)
 
 template <>
 inline std::string GenericCommandProcessor::convert(const std::string &str)
-{
-    return str;
-}
-
-template <>
-inline const std::string &GenericCommandProcessor::convert(
-    const std::string &str)
 {
     return str;
 }
