@@ -59,6 +59,13 @@ void QConsole::insertBlock()
     textCursor().insertBlock();
 }
 
+void QConsole::removeBlock()
+{
+    QTextCursor cursor = textCursor();
+    cursor.select(QTextCursor::BlockUnderCursor);
+    cursor.removeSelectedText();
+}
+
 void QConsole::insertPrompt()
 {
     insertPlainText(m_prompt.c_str());
@@ -243,6 +250,11 @@ void QConsole::scrollDown()
 
 void QConsole::historyAdd(const std::string &command)
 {
+    if (!m_history.empty() && m_history.back() == command)
+    {
+        return;
+    }
+
     m_history.emplace_back(command);
     m_history_pos = m_history.size();
 }

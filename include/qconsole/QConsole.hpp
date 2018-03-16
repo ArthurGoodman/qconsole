@@ -27,6 +27,8 @@ public: // methods
     QConsole &operator<<(const std::string &str);
 
     void insertBlock();
+    void removeBlock();
+
     void insertPrompt();
 
     void setBaseColor(const QColor &color);
