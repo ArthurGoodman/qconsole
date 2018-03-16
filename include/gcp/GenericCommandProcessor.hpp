@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cstddef>
 #include <functional>
 #include <iterator>
 #include <map>
@@ -17,18 +19,125 @@ public: // methods
     template <class F>
     void registerCommand(const std::string &name, F &&f)
     {
+        ///@todo Implement overloaded commands
         RegisterCommandHelper<F>{}(*this, name, std::forward<F>(f));
     }
 
-    void process(const std::string &command)
+    void process(const std::string &str)
     {
-        ///@todo Implement proper tokenization
+        std::vector<std::string> words;
+        std::size_t pos = 0;
 
-        std::istringstream stream(command);
+        auto skip_spaces = [&]() {
+            while (std::isspace(str[pos]) && pos < str.size())
+            {
+                pos++;
+            }
+        };
 
-        std::vector<std::string> words{
-            std::istream_iterator<std::string>(stream),
-            std::istream_iterator<std::string>()};
+        while (pos < str.size())
+        {
+            if (std::isspace(str[pos]))
+            {
+                skip_spaces();
+            }
+            else if (str[pos] == '(')
+            {
+                words.emplace_back("");
+
+                int depth = 0;
+
+                while (pos < str.size())
+                {
+                    if (str[pos] == ')')
+                    {
+                        if (--depth == 0)
+                        {
+                            pos++;
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        if (str[pos] == '(')
+                        {
+                            if (depth++ == 0)
+                            {
+                                pos++;
+                                continue;
+                            }
+                        }
+                    }
+
+                    if (depth)
+                    {
+                        if (std::isspace(str[pos]))
+                        {
+                            words.back() += str[pos++];
+                            skip_spaces();
+                        }
+                        else
+                        {
+                            words.back() += str[pos++];
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                if (depth)
+                {
+                    if (m_error_callback)
+                    {
+                        m_error_callback("unmatched parentheses");
+                    }
+                    return;
+                }
+
+                words.back().erase(
+                    words.back().begin(),
+                    std::find_if(
+                        words.back().begin(), words.back().end(), [](char c) {
+                            return !std::isspace(c);
+                        }));
+
+                words.back().erase(
+                    std::find_if(
+                        words.back().rbegin(),
+                        words.back().rend(),
+                        [](char c) { return !std::isspace(c); })
+                        .base(),
+                    words.back().end());
+            }
+            else if (str[pos] == ')')
+            {
+                if (m_error_callback)
+                {
+                    m_error_callback("unmatched parentheses");
+                }
+                return;
+            }
+            else if (std::isalnum(str[pos]))
+            {
+                words.emplace_back("");
+
+                while (std::isalnum(str[pos]) && pos < str.size())
+                {
+                    words.back() += str[pos++];
+                }
+            }
+            else
+            {
+                if (m_error_callback)
+                {
+                    m_error_callback(
+                        std::string("unknown symbol '") + str[pos] + "'");
+                }
+                return;
+            }
+        }
 
         if (words.empty())
         {
@@ -45,7 +154,6 @@ public: // methods
         }
 
         std::vector<std::string> args{++std::begin(words), std::end(words)};
-
         m_handlers[words[0]](args);
     }
 
