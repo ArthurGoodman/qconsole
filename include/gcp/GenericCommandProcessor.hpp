@@ -19,7 +19,6 @@ public: // methods
     template <class F>
     void registerCommand(const std::string &name, F &&f)
     {
-        ///@todo Implement overloaded commands
         RegisterCommandHelper<F>{}(*this, name, std::forward<F>(f));
     }
 
@@ -119,23 +118,15 @@ public: // methods
                 }
                 return;
             }
-            else if (std::isalnum(str[pos]))
+            else
             {
                 words.emplace_back("");
 
-                while (std::isalnum(str[pos]) && pos < str.size())
+                while (str[pos] != '(' && str[pos] != ')' &&
+                       !std::isspace(str[pos]) && pos < str.size())
                 {
                     words.back() += str[pos++];
                 }
-            }
-            else
-            {
-                if (m_error_callback)
-                {
-                    m_error_callback(
-                        std::string("unknown symbol '") + str[pos] + "'");
-                }
-                return;
             }
         }
 
@@ -144,7 +135,11 @@ public: // methods
             return;
         }
 
-        if (m_handlers.find(words[0]) == std::end(m_handlers))
+        std::vector<std::string> args{++std::begin(words), std::end(words)};
+
+        const auto name_it = m_handlers.find(words[0]);
+
+        if (name_it == std::end(m_handlers))
         {
             if (m_error_callback)
             {
@@ -153,8 +148,49 @@ public: // methods
             return;
         }
 
-        std::vector<std::string> args{++std::begin(words), std::end(words)};
-        m_handlers[words[0]](args);
+        const auto args_it = name_it->second.find(args.size());
+
+        if (args_it == std::end(name_it->second))
+        {
+            std::vector<std::size_t> arg_counts;
+            for (const auto &it : name_it->second)
+            {
+                arg_counts.emplace_back(it.first);
+            }
+
+            if (m_error_callback)
+            {
+                std::string arg_counts_str;
+
+                if (arg_counts.size() == 1)
+                {
+                    arg_counts_str = std::to_string(arg_counts[0]);
+                }
+                else
+                {
+                    arg_counts_str += "[";
+
+                    for (std::size_t i = 0; i < arg_counts.size(); i++)
+                    {
+                        if (i > 0)
+                        {
+                            arg_counts_str += "|";
+                        }
+
+                        arg_counts_str += std::to_string(arg_counts[i]);
+                    }
+
+                    arg_counts_str += "]";
+                }
+
+                m_error_callback(
+                    "invalid number of arguments (" +
+                    std::to_string(args.size()) + "/" + arg_counts_str + ")");
+            }
+            return;
+        }
+
+        args_it->second(args);
     }
 
     void registerErrorCallback(
@@ -164,6 +200,9 @@ public: // methods
     }
 
 private: // types
+    template <class T>
+    using Decay = typename std::decay<T>::type;
+
     using HandlerType = std::function<void(const std::vector<std::string> &)>;
 
     template <class F>
@@ -204,39 +243,27 @@ private: // methods
         const std::function<void(Args...)> &handler,
         index_sequence<Indices...>)
     {
-        m_handlers[name] = [=](const std::vector<std::string> &args) {
-            if (args.size() != sizeof...(Args))
-            {
-                if (m_error_callback)
+        m_handlers[name][sizeof...(Args)] =
+            [=](const std::vector<std::string> &args) {
+                try
                 {
-                    m_error_callback(
-                        "invalid number of arguments (" +
-                        std::to_string(args.size()) + "/" +
-                        std::to_string(sizeof...(Args)) + ")");
+                    handler(convert<Decay<Args>>(args[Indices])...);
                 }
-                return;
-            }
-
-            try
-            {
-                handler(
-                    convert<typename std::decay<Args>::type>(args[Indices])...);
-            }
-            catch (const std::exception &e)
-            {
-                if (m_error_callback)
+                catch (const std::exception &e)
                 {
-                    m_error_callback(e.what());
+                    if (m_error_callback)
+                    {
+                        m_error_callback(e.what());
+                    }
                 }
-            }
-        };
+            };
     }
 
     template <class T>
     T convert(const std::string &str);
 
 private: // fields
-    std::map<std::string, HandlerType> m_handlers;
+    std::map<std::string, std::map<std::size_t, HandlerType>> m_handlers;
     std::function<void(const std::string &)> m_error_callback;
 };
 
