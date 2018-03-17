@@ -28,6 +28,7 @@ public: // methods
 
     void insertBlock();
     void removeBlock();
+    void eraseBlock();
 
     void insertPrompt();
 
@@ -41,6 +42,8 @@ protected: // methods
     void contextMenuEvent(QContextMenuEvent *e) override;
 
 private: // methods
+    void selectBlock();
+    int promptSize() const;
     void onReturn();
     void historyAdd(const std::string &command);
     void historyBack();

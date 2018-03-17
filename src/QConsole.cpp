@@ -66,6 +66,14 @@ void QConsole::removeBlock()
     cursor.removeSelectedText();
 }
 
+void QConsole::eraseBlock()
+{
+    QTextCursor cursor = textCursor();
+    cursor.movePosition(QTextCursor::StartOfBlock);
+    cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+    cursor.removeSelectedText();
+}
+
 void QConsole::insertPrompt()
 {
     insertPlainText(m_prompt.c_str());
@@ -89,19 +97,27 @@ void QConsole::setTextColor(const QColor &c)
 
 void QConsole::keyPressEvent(QKeyEvent *e)
 {
-    ///@todo Add selections
-
     if (m_locked)
     {
         return;
     }
 
-    if ((e->key() == Qt::Key_V && e->modifiers() == Qt::ControlModifier))
+    if (e->modifiers() == Qt::ControlModifier)
     {
-        QPlainTextEdit::keyPressEvent(e);
+        if (e->key() == Qt::Key_C || e->key() == Qt::Key_V ||
+            e->key() == Qt::Key_X)
+        {
+            QPlainTextEdit::keyPressEvent(e);
+            return;
+        }
+        else if (e->key() == Qt::Key_A)
+        {
+            selectBlock();
+            return;
+        }
     }
-    else if (
-        e->key() >= Qt::Key_Space && e->key() <= Qt::Key_AsciiTilde &&
+
+    if (e->key() >= Qt::Key_Space && e->key() <= Qt::Key_AsciiTilde &&
         e->key() != Qt::Key_QuoteLeft)
     {
         if (e->modifiers() == Qt::NoModifier ||
@@ -126,8 +142,8 @@ void QConsole::keyPressEvent(QKeyEvent *e)
             break;
 
         case Qt::Key_Backspace:
-            if (textCursor().positionInBlock() >
-                static_cast<int>(m_prompt.size()))
+            if (textCursor().positionInBlock() > promptSize() ||
+                textCursor().hasSelection())
             {
                 QPlainTextEdit::keyPressEvent(e);
             }
@@ -139,44 +155,26 @@ void QConsole::keyPressEvent(QKeyEvent *e)
             break;
 
         case Qt::Key_Left:
-            if (e->modifiers() == Qt::NoModifier)
+        {
+            QPlainTextEdit::keyPressEvent(e);
+
+            QTextCursor cursor = textCursor();
+
+            if (cursor.positionInBlock() < promptSize())
             {
-                QPlainTextEdit::keyPressEvent(e);
-
-                QTextCursor cursor = textCursor();
-
-                if (cursor.positionInBlock() <
-                    static_cast<int>(m_prompt.size()))
-                {
-                    cursor.movePosition(
-                        QTextCursor::Right, QTextCursor::MoveAnchor);
-                }
-
-                setTextCursor(cursor);
+                QTextCursor::MoveMode move_op = cursor.hasSelection()
+                                                    ? QTextCursor::KeepAnchor
+                                                    : QTextCursor::MoveAnchor;
+                cursor.movePosition(QTextCursor::StartOfBlock, move_op);
+                cursor.movePosition(QTextCursor::Right, move_op, promptSize());
             }
-            else if (e->modifiers() == Qt::ControlModifier)
-            {
-                QPlainTextEdit::keyPressEvent(e);
 
-                QTextCursor cursor = textCursor();
-
-                if (cursor.positionInBlock() <
-                    static_cast<int>(m_prompt.size()))
-                {
-                    cursor.movePosition(
-                        QTextCursor::Right, QTextCursor::MoveAnchor, 2);
-                }
-
-                setTextCursor(cursor);
-            }
-            break;
+            setTextCursor(cursor);
+        }
+        break;
 
         case Qt::Key_Right:
-            if (e->modifiers() == Qt::NoModifier ||
-                e->modifiers() == Qt::ControlModifier)
-            {
-                QPlainTextEdit::keyPressEvent(e);
-            }
+            QPlainTextEdit::keyPressEvent(e);
             break;
 
         case Qt::Key_Home:
@@ -184,7 +182,7 @@ void QConsole::keyPressEvent(QKeyEvent *e)
             QTextCursor cursor = textCursor();
             cursor.movePosition(QTextCursor::StartOfBlock);
             cursor.movePosition(
-                QTextCursor::Right, QTextCursor::MoveAnchor, m_prompt.size());
+                QTextCursor::Right, QTextCursor::MoveAnchor, promptSize());
             setTextCursor(cursor);
         }
         break;
@@ -222,14 +220,28 @@ void QConsole::contextMenuEvent(QContextMenuEvent *)
 {
 }
 
+void QConsole::selectBlock()
+{
+    QTextCursor cursor = textCursor();
+    cursor.movePosition(QTextCursor::StartOfBlock);
+    cursor.movePosition(
+        QTextCursor::Right, QTextCursor::MoveAnchor, promptSize());
+    cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+    setTextCursor(cursor);
+}
+
+int QConsole::promptSize() const
+{
+    return m_prompt.size();
+}
+
 void QConsole::onReturn()
 {
     QTextCursor cursor = textCursor();
     cursor.movePosition(QTextCursor::EndOfBlock);
     setTextCursor(cursor);
 
-    std::string command =
-        cursor.block().text().mid(m_prompt.size()).toStdString();
+    std::string command = cursor.block().text().mid(promptSize()).toStdString();
     historyAdd(command);
 
     insertBlock();
@@ -266,12 +278,7 @@ void QConsole::historyBack()
         return;
     }
 
-    QTextCursor cursor = textCursor();
-    cursor.movePosition(QTextCursor::StartOfBlock);
-    cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-    cursor.removeSelectedText();
-
-    setTextCursor(cursor);
+    eraseBlock();
 
     insertPlainText((m_prompt + m_history.at(m_history_pos - 1)).c_str());
 
@@ -285,12 +292,7 @@ void QConsole::historyForward()
         return;
     }
 
-    QTextCursor cursor = textCursor();
-    cursor.movePosition(QTextCursor::StartOfBlock);
-    cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-    cursor.removeSelectedText();
-
-    setTextCursor(cursor);
+    eraseBlock();
 
     if (m_history_pos == m_history.size() - 1)
     {
