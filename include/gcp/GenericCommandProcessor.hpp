@@ -110,6 +110,38 @@ public: // methods
                         .base(),
                     words.back().end());
             }
+            else if (str[pos] == '"')
+            {
+                words.emplace_back("");
+
+                pos++;
+
+                while (pos < str.size() && str[pos] != '"')
+                {
+                    if (str[pos] == '\\')
+                    {
+                        if (++pos >= str.size())
+                        {
+                            if (m_error_callback)
+                            {
+                                m_error_callback("invalid escape sequence");
+                            }
+                            return;
+                        }
+                    }
+
+                    words.back() += str[pos++];
+                }
+
+                if (str[pos++] != '"')
+                {
+                    if (m_error_callback)
+                    {
+                        m_error_callback("invalid string constant");
+                    }
+                    return;
+                }
+            }
             else if (str[pos] == ')')
             {
                 if (m_error_callback)
