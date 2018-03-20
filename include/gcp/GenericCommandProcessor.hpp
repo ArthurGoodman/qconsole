@@ -184,14 +184,14 @@ public: // methods
 
         if (args_it == std::end(name_it->second))
         {
-            std::vector<std::size_t> arg_counts;
-            for (const auto &it : name_it->second)
-            {
-                arg_counts.emplace_back(it.first);
-            }
-
             if (m_error_callback)
             {
+                std::vector<std::size_t> arg_counts;
+                for (const auto &it : name_it->second)
+                {
+                    arg_counts.emplace_back(it.first);
+                }
+
                 std::string arg_counts_str;
 
                 if (arg_counts.size() == 1)
