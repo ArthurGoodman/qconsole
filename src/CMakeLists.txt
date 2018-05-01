@@ -4,7 +4,7 @@ file(GLOB_RECURSE QCONSOLE_HEADERS ${PROJECT_SOURCE_DIR}/include/*.hpp)
 set(CMAKE_AUTOMOC true)
 set(CMAKE_INCLUDE_CURRENT_DIR true)
 
-qt5_wrap_cpp(${QCONSOLE_HEADERS})
+qt5_wrap_cpp(${QCONSOLE_SOURCES})
 
 add_library(${QCONSOLE}
     ${QCONSOLE_SOURCES}
